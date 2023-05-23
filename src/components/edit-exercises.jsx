@@ -1,162 +1,139 @@
-import React, { Component } from 'react';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
+import axios from 'axios';
 import "react-datepicker/dist/react-datepicker.css";
 
-export default class EditExercise extends Component {
-  constructor(props) {
-    super(props);
 
-    this.onChangeUsername = this.onChangeUsername.bind(this);
-    this.onChangeDescription = this.onChangeDescription.bind(this);
-    this.onChangeDuration = this.onChangeDuration.bind(this);
-    this.onChangeDate = this.onChangeDate.bind(this);
-    this.onSubmit = this.onSubmit.bind(this);
+export default function EditExercise() {
+    const navigate = useNavigate();
+    const params = useParams();
 
-    this.state = {
-      username: '',
-      description: '',
-      duration: 0,
-      date: new Date(),
-      users: []
-    };
-  }
+    const [username, setUsername] = useState('')
+    const [description, setDescription] = useState('')
+    const [duration, setDuration] = useState(0)
+    const [date, setDate] = useState(new Date())
+    const [users, setUsers] = useState([])
 
-  componentDidMount() {
-    const { match } = this.props;
-    if (match && match.params && match.params.id) {
-      const exerciseId = match.params.id;
-  
-      axios.get('http://localhost:5050/exercises/' + exerciseId)
-        .then(response => {
-          this.setState({
-            username: response.data.username,
-            description: response.data.description,
-            duration: response.data.duration,
-            date: new Date(response.data.date)
-          })   
-        })
-        .catch(function (error) {
-          console.log(error);
-        });
+    const userInputRef = useRef('userInput');
+
+    useEffect(() => {
+        const getData = async () => {
+            try {
+                const response = await axios.get(`http://localhost:5050/exercises/${params.id}`);
+                const data = await response.data;
+
+                setUsername(data.username);
+                setDescription(data.description);
+                setDuration(data.duration);
+                setDate(new Date(data.date));
+            }
+            catch (error) {
+                console.error(error);
+            }
+        };
+        getData()
+
+        const getUsers = async () => {
+            const response = await axios.get('http://localhost:5050/users/');
+            const data = await response.data;
+            setUsers(data.map(user => user.username));
+        };
+        getUsers();
+    }, [])
+
+
+    const onChangeUsername = (e) => {
+        setUsername(e.target.value);
     }
-  
-    axios.get('http://localhost:5050/exercises/')
-      .then(response => {
-        if (response.data.length > 0) {
-          this.setState({
-            users: response.data.map(user => user.username),
-          });
+
+    const onChangeDescription = (e) => {
+        setDescription(e.target.value);
+    }
+
+    const onChangeDuration = (e) => {
+        setDuration(e.target.value);
+    }
+
+    const onChangeDate = (date) => {
+        setDate(date)
+    }
+
+    const onSubmit = async (e) => {
+        e.preventDefault();
+
+        const exercise = {
+            username: username,
+            description: description,
+            duration: duration,
+            date: date,
         }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
-  }
-  
+        console.log(exercise);
+        try {
+            await axios.post(`http://localhost:5050/exercises/update/${params.id}`, exercise)
+                .then(res => console.log(res.data));
+            navigate('/');
+        }
+        catch (error) {
+            console.error(error);
+        }
+    }
 
-  onChangeUsername(e) {
-    this.setState({
-      username: e.target.value
-    });
-  }
-
-  onChangeDescription(e) {
-    this.setState({
-      description: e.target.value
-    });
-  }
-
-  onChangeDuration(e) {
-    this.setState({
-      duration: e.target.value
-    });
-  }
-
-  onChangeDate(date) {
-    this.setState({
-      date: date
-    });
-  }
-
-  onSubmit(e) {
-    e.preventDefault();
-  
-    const exerciseId = this.props.match.params.id;
-  
-    const exercise = {
-      username: this.state.username,
-      description: this.state.description,
-      duration: this.state.duration,
-      date: this.state.date
-    };
-  
-    console.log(exercise);
-  
-    axios.post('http://localhost:5050/exercises/update/' + exerciseId, exercise)
-      .then(res => console.log(res.data))
-      .catch(error => console.log(error));
-  
-    this.props.history.push('/');
-  }
-
-  render() {
     return (
-      <div>
-        <h3>Edit Exercise Log</h3>
-        <form onSubmit={this.onSubmit}>
-          <div className="form-group">
-            <label>Username: </label>
-            <select
-              ref="userInput"
-              required
-              className="form-control"
-              value={this.state.username}
-              onChange={this.onChangeUsername}
-            >
-              {this.state.users.map(function (user) {
-                return (
-                  <option key={user} value={user}>
-                    {user}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-          <div className="form-group">
-            <label>Description: </label>
-            <input
-              type="text"
-              required
-              className="form-control"
-              value={this.state.description}
-              onChange={this.onChangeDescription}
-            />
-          </div>
-          <div className="form-group">
-            <label>Duration (in minutes): </label>
-            <input
-              type="text"
-              className="form-control"
-              value={this.state.duration}
-              onChange={this.onChangeDuration}
-            />
-          </div>
-          <div className="form-group">
-            <label>Date: </label>
-            <div>
-              <DatePicker
-                selected={this.state.date}
-                onChange={this.onChangeDate}
-              />
-            </div>
-          </div>
+        <div>
+            <h3>Edit Exercise Log</h3>
+            <form onSubmit={onSubmit}>
+                <div className='form-group'>
+                    <label>Username: </label>
+                    <select ref={userInputRef}
+                        required
+                        className="form-control"
+                        value={username}
+                        onChange={onChangeUsername}>
+                        {
+                            users.map(function (user) {
+                                return <option
+                                    key={user}
+                                    value={user}>{user}
+                                </option>;
+                            })
+                        }
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label>Description: </label>
+                    <input type="text"
+                        required
+                        className="form-control"
+                        value={description}
+                        onChange={onChangeDescription}
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Duration (in minutes): </label>
+                    <input
+                        type="text"
+                        className="form-control"
+                        value={duration}
+                        onChange={onChangeDuration}
+                    />
+                </div>
+                <div className="form-group">
+                    <label>Date: </label>
+                    <div>
+                        <DatePicker
+                            selected={date}
+                            className="form-control"
+                            onChange={onChangeDate}
+                        />
+                    </div>
+                </div>
 
-          <div className="form-group">
-            <input type="submit" value="Edit Exercise Log" className="btn btn-primary" />
-          </div>
-        </form>
-      </div>
+                <div className="form-group">
+                    <input type="submit" value="Edit Exercise Log" className="btn btn-primary" />
+                </div>
+            </form>
+        </div>
     );
-  }
+
 }
